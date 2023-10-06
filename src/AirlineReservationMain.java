@@ -1,5 +1,7 @@
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.*;
 
 
@@ -10,7 +12,7 @@ public class AirlineReservationMain {
     public AirlineReservationMain(Scanner scanner){
         this.scanner = scanner;
     }
-
+    //DRY - Don't Repeat Yourself
     public void continueFun(){
         System.out.println("Enter any key to continue:");
         scanner.nextLine();
@@ -19,10 +21,17 @@ public class AirlineReservationMain {
     public void createAdminEntry() throws SQLException{
 
         String checkAdminEntryQuery = "SELECT COUNT(*) FROM Admin";
-        int adminCountResult = this.dataBaseConnection.executeScalerQuery(checkAdminEntryQuery);
+
+        Statement statement = this.dataBaseConnection.connection.createStatement();
+        ResultSet resultSet = statement.executeQuery(checkAdminEntryQuery);
+        int adminCountResult = 0;
+        if(resultSet.next()){
+            adminCountResult = resultSet.getInt(1);
+        }
+        statement.close();
 
         try {
-            if (adminCountResult == 0) {;
+            if (adminCountResult == 0) {
                 String insertAdminQuery = "INSERT INTO Admin (Name, Email, Password) VALUES (?, ?, ?)";
                 PreparedStatement preparedStatement = this.dataBaseConnection.preparedStatement(insertAdminQuery);
                 preparedStatement.setString(1, "Admin");

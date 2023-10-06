@@ -10,7 +10,7 @@ class DataBaseConnection{
     private String url = "jdbc:mysql://localhost:3306/airline_reservation_system";
     private String userName = "root";
     private String password = "root";
-    private Connection connection;
+    public Connection connection;
 
     public DataBaseConnection() throws SQLException{
         Connection connection = DriverManager.getConnection(url, userName, password);
@@ -35,17 +35,6 @@ class DataBaseConnection{
         int resultSet =  statement.executeUpdate(query);
         statement.close();
         return resultSet;
-    }
-
-    public int executeScalerQuery(String query) throws SQLException{
-        Statement statement = this.connection.createStatement();
-        ResultSet resultSet = statement.executeQuery(query);
-        int result = 0;
-        if(resultSet.next()){
-            result = resultSet.getInt(1);
-        }
-        statement.close();
-        return result;
     }
 
     public PreparedStatement preparedStatement(String query) throws SQLException{
