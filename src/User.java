@@ -4,7 +4,7 @@ import java.sql.SQLException;
 import java.util.Scanner;
 
 public class User {
-    String id;
+    int id;
     String name;
     String email;
     String contactNumber;
@@ -15,7 +15,7 @@ public class User {
     }
 
     public User(ResultSet resultSet) throws SQLException{
-        this.id = resultSet.getString("Id");
+        this.id = resultSet.getInt("Id");
         this.name = resultSet.getString("Name");
         this.email = resultSet.getString("Email");
         this.contactNumber = resultSet.getString("ContactNumber");

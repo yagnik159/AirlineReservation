@@ -7,10 +7,11 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Reservation{
-    String id;
-    String userId;
-    String flightId;
+    int id;
+    int userId;
+    int flightId;
     String className;
+    int noOfSeats;
     Scanner scanner;
 
     public Reservation(Scanner scanner){
@@ -18,10 +19,11 @@ public class Reservation{
     }
 
     public Reservation(ResultSet resultSet) throws SQLException{
-        this.id = resultSet.getString("Id");
-        this.userId = resultSet.getString("UserId");
-        this.flightId = resultSet.getString("FlightId");
+        this.id = resultSet.getInt("Id");
+        this.userId = resultSet.getInt("UserId");
+        this.flightId = resultSet.getInt("FlightId");
         this.className = resultSet.getString("ClassName");
+        this.noOfSeats = resultSet.getInt("NoOfSeats");
     }
 
     public void bookFlight(User user) throws SQLException{
@@ -29,8 +31,8 @@ public class Reservation{
         AirlineReservationMain airLineReservationMain = new AirlineReservationMain(scanner);
         Flights flights = new Flights(scanner);
 
-        String userId = user.id;
-        String flightId;
+        int userId = user.id;
+        int flightId;
         String className;
 
         List<Flights> flightsList = flights.viewAllAvailableFlights();
@@ -61,11 +63,16 @@ public class Reservation{
             
             return;
         }
+        
+        System.out.print("Enter No of seat you want to reserve: ");
+        int noOfSeats = scanner.nextInt();
+        scanner.nextLine();
+
         flightId = flightsList.get(index - 1).id;
 
-        System.out.println("1. First Class: price = " + flightsList.get(index - 1).getFirstClassPrice());
-        System.out.println("2. Business Class: price = " + (flightsList.get(index - 1).getBusinessClassPrice()));
-        System.out.println("3. Economical Class: price = " + (flightsList.get(index - 1).getEconomicalClassPrice()));
+        System.out.println("1. First Class: price = " + flightsList.get(index - 1).getFirstClassPrice() + " per seat");
+        System.out.println("2. Business Class: price = " + (flightsList.get(index - 1).getBusinessClassPrice() + " per seat"));
+        System.out.println("3. Economical Class: price = " + (flightsList.get(index - 1).getEconomicalClassPrice() + " per seat"));
 
         System.out.print("Enter class name: ");
         int classChoice = scanner.nextInt();
@@ -75,13 +82,42 @@ public class Reservation{
         else if(classChoice == 2) className = "Business Class";
         else className = "Economical Class";
 
+        System.out.print("Do you want to reserve return flight? (1/0)");
+        int returnChoice = scanner.nextInt();
+        scanner.nextLine();
+
         System.out.println("==============");
 
-        String insertReservationQuery = "INSERT INTO Reservation (UserId, FlightId, ClassName) VALUES ('" + userId + "', '" + flightId + "', '" + className + "')";
+        String insertReservationQuery = "INSERT INTO Reservation (UserId, FlightId, ClassName, NoOfSeats) VALUES ('" + userId + "', '" + flightId + "', '" + className + "', '" + noOfSeats + "')";
+
+        int returnFlightId = flights.GetReturnFlightId(flightId);
+        
+
+        if(returnChoice == 1){
+            String insertReturnFlightReservationQuery = "INSERT INTO Reservation (UserId, FlightId, ClassName, NoOfSeats) VALUES ('" + userId + "', '" + returnFlightId + "', '" + className + "', '" + noOfSeats + "')";
+            try {
+                dataBaseConnection.executeUpdate(insertReturnFlightReservationQuery);
+            } catch (SQLException e) {
+                System.out.println("Error while executing query");
+                airLineReservationMain.continueFun();
+            }
+        }
 
         try {
             dataBaseConnection.executeUpdate(insertReservationQuery);
             System.out.println("Flight Booked Successfully");
+            System.out.println("==============");
+            System.out.println("Flight Details");
+            System.out.println("==============");
+            System.out.println("From: " + flightsList.get(index - 1).fromLocation);
+            System.out.println("To: " + flightsList.get(index - 1).toLocation);
+            System.out.println("Departure: " + flightsList.get(index - 1).departureTime);
+            System.out.println("Arrival: " + flightsList.get(index - 1).arrivalTime);
+            System.out.println("Duration: " + flightsList.get(index - 1).duration);
+            System.out.println("Class: " + className);
+            System.out.println("No of seats: " + noOfSeats);
+            System.out.println("Is return flight: " + (returnChoice == 1 ? "Yes" : "No"));
+
             airLineReservationMain.continueFun();
         } catch (SQLException e) {
             System.out.println("Error while executing query");
@@ -96,7 +132,7 @@ public class Reservation{
 
     public List<Reservation> allBookings(User user) throws SQLException{
         List<Reservation> reservationList = new ArrayList<Reservation>();
-        String userId = user.id;
+        int userId = user.id;
         String selectAllFlightsQuery = "SELECT * FROM Reservation WHERE UserId = ?";
         ResultSet resultSet = null;
 
@@ -104,7 +140,7 @@ public class Reservation{
 
         try{
             PreparedStatement preparedStatement = dataBaseConnection.preparedStatement(selectAllFlightsQuery);
-            preparedStatement.setString(1, userId);
+            preparedStatement.setInt(1, userId);
             resultSet = preparedStatement.executeQuery();
             while(resultSet.next()){
 
@@ -157,7 +193,7 @@ public class Reservation{
             return;
         }
 
-        String reservationId = reservationList.get(index - 1).id;
+        int reservationId = reservationList.get(index - 1).id;
         System.out.println("==============");
 
         String deleteReservationQuery = "DELETE FROM Reservation WHERE Id = '" + reservationId + "'";

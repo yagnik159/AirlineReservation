@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Scanner;
 
 public class Flights{
-    String id;
+    int id;
     String fromLocation;
     String toLocation;
     String duration;
@@ -18,6 +18,7 @@ public class Flights{
     int economicalClassSeats;
     int price;
     int status;
+    int airbusId;
     Scanner scanner;
 
     public Flights(Scanner scanner){
@@ -25,7 +26,7 @@ public class Flights{
     }
 
     public Flights(ResultSet resultSet) throws SQLException{
-        this.id = resultSet.getString("Id");
+        this.id = resultSet.getInt("Id");
         this.fromLocation = resultSet.getString("FromLocation");
         this.toLocation = resultSet.getString("ToLocation");
         this.duration = resultSet.getString("Duration");
@@ -36,6 +37,7 @@ public class Flights{
         this.economicalClassSeats = resultSet.getInt("EconomicalClassSeats");
         this.price = resultSet.getInt("Price");
         this.status = resultSet.getInt("Status");
+        this.airbusId = resultSet.getInt("AirbusId");
     }
 
     public int getFirstClassPrice(){
@@ -48,6 +50,40 @@ public class Flights{
 
     public int getEconomicalClassPrice(){
         return this.price * 2;
+    }
+
+    public int GetReturnFlightId(int flightId) throws SQLException{
+        DataBaseConnection dataBaseConnection = new DataBaseConnection();
+        String selectFlightQuery = "SELECT * FROM Flights WHERE Id = ?";
+        ResultSet resultSet = null;
+        int airbusId = 0;
+
+        try{
+            PreparedStatement preparedStatement = dataBaseConnection.preparedStatement(selectFlightQuery);
+            preparedStatement.setInt(1, flightId);
+            resultSet = preparedStatement.executeQuery();
+            if(resultSet.next()){
+                airbusId = resultSet.getInt("AirbusId");
+            }
+        }catch(SQLException e){
+            System.out.println("Error while executing query");
+        }
+
+        String selectFlightWithSameAirbusIdQuery = "SELECT * FROM Flights WHERE AirbusId = ? AND Id != ?";
+
+        try{
+            PreparedStatement preparedStatement = dataBaseConnection.preparedStatement(selectFlightWithSameAirbusIdQuery);
+            preparedStatement.setInt(1, airbusId);
+            preparedStatement.setInt(2, flightId);
+            resultSet = preparedStatement.executeQuery();
+            if(resultSet.next()){
+                return resultSet.getInt("Id");
+            }
+        }catch(SQLException e){
+            System.out.println("Error while executing query");
+        }    
+        
+        return 0;
     }
 
     public List<Flights> viewAllAvailableFlights() throws SQLException{
@@ -73,7 +109,7 @@ public class Flights{
     }
 
     public Flights getFlightFromReservation(Reservation reservation) throws SQLException{
-        String flightId = reservation.flightId;
+        int flightId = reservation.flightId;
         String selectFlightQuery = "SELECT * FROM Flights WHERE Id = ?";
         ResultSet resultSet = null;
         Flights flight = null;
@@ -81,7 +117,7 @@ public class Flights{
 
         try{
             PreparedStatement preparedStatement = dataBaseConnection.preparedStatement(selectFlightQuery);
-            preparedStatement.setString(1, flightId);
+            preparedStatement.setInt(1, flightId);
             resultSet = preparedStatement.executeQuery();
             if(resultSet.next()){
                 flight = new Flights(resultSet);
@@ -129,7 +165,9 @@ public class Flights{
         String toLocation;
         String duration;
         String departureTime;
+        String returnDepartureTime;
         String arrivalTime;
+        String returnArrivalTime;
         int firstClassSeats;
         int businessClassSeats;
         int economicalClassSeats;
@@ -148,6 +186,10 @@ public class Flights{
         departureTime = scanner.nextLine();
         System.out.print("Enter arrival time: (YYYY/MM/DD:HH.MM) ");
         arrivalTime = scanner.nextLine();
+        System.out.print("Enter departure time for return flight: (YYYY/MM/DD:HH.MM) ");
+        returnDepartureTime = scanner.nextLine();
+        System.out.print("Enter arrival time for return flight: (YYYY/MM/DD:HH.MM) ");
+        returnArrivalTime = scanner.nextLine();
         System.out.print("Enter Number of first class seats: ");
         firstClassSeats = scanner.nextInt();
         scanner.nextLine();
@@ -161,11 +203,17 @@ public class Flights{
         price = scanner.nextInt();
         scanner.nextLine();
         System.out.println("==============");
-        
-        String insertFlightQuery = "INSERT INTO Flights (FromLocation, ToLocation, Duration, DepartureTime, ArrivalTime, FirstClassSeats, BusinessClassSeats, EconomicalClassSeats, Price, Status) VALUES ('" + fromLocation + "', '" + toLocation + "', '" + duration + "', '" + departureTime + "', '" + arrivalTime + "', " + firstClassSeats + ", " + businessClassSeats + ", " + economicalClassSeats + ", " + price + ", " + status + ")";
+
+        long currentTimeMillis = System.currentTimeMillis();
+        int airbusId = (int) (currentTimeMillis / 1000);
+
+        String insertFlightQuery = "INSERT INTO Flights (FromLocation, ToLocation, Duration, DepartureTime, ArrivalTime, FirstClassSeats, BusinessClassSeats, EconomicalClassSeats, Price, Status, AirbusId) VALUES ('" + fromLocation + "', '" + toLocation + "', '" + duration + "', '" + departureTime + "', '" + arrivalTime + "', " + firstClassSeats + ", " + businessClassSeats + ", " + economicalClassSeats + ", " + price + ", " + status + ", " + airbusId + ")";
+
+        String insertReturnFlightQuery = "INSERT INTO Flights (FromLocation, ToLocation, Duration, DepartureTime, ArrivalTime, FirstClassSeats, BusinessClassSeats, EconomicalClassSeats, Price, Status, AirbusId) VALUES ('" + toLocation + "', '" + fromLocation + "', '" + duration + "', '" + returnDepartureTime + "', '" + returnArrivalTime + "', " + firstClassSeats + ", " + businessClassSeats + ", " + economicalClassSeats + ", " + price + ", " + status + ", " + airbusId + ")";
 
         try {
             dataBaseConnection.executeUpdate(insertFlightQuery);
+            dataBaseConnection.executeUpdate(insertReturnFlightQuery);
             System.out.println("Flight Added Successfully");
             airLineReservationMain.continueFun();
         } catch (SQLException e) {
@@ -181,7 +229,7 @@ public class Flights{
         DataBaseConnection dataBaseConnection = new DataBaseConnection();
         AirlineReservationMain airLineReservationMain = new AirlineReservationMain(scanner);
 
-        String flightId;
+        int flightId;
         System.out.println("\n\n\nRemove Flight");
         List<Flights> flightsList = viewAllAvailableFlights();
         System.out.println("==============");
@@ -218,7 +266,7 @@ public class Flights{
 
         try {
             PreparedStatement preparedStatement = dataBaseConnection.preparedStatement(updateStatusOfFlight);
-            preparedStatement.setString(1, flightId);
+            preparedStatement.setInt(1, flightId);
             int rowsAffected = preparedStatement.executeUpdate();
             preparedStatement.close();
         
